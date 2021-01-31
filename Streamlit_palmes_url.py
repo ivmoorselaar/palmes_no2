@@ -6,8 +6,12 @@ import altair as alt
 st.title('GGD Palmes metingen - Dashboard (test fase)')
 
 #Dataset aanmaken
-jaren=r'C:\\Users\LA01926\Documents\Luchtkwaliteit\Maps NO2\NO2_JAREN UPDATE.xlsx'
-locaties=r'C:\\Users\LA01926\Documents\Luchtkwaliteit\Maps NO2\NO2_LOCATIES UPDATE.xlsx'
+url='https://raw.githubusercontent.com/ivmoorselaar/palmes_no2/main/NO2_JAREN.csv'
+url2='https://github.com/ivmoorselaar/palmes_no2/blob/main/NO2_LOCATIES.xlsx?raw=true'
+
+
+jaren=pd.read_csv(url,sep=';')
+locaties=pd.read_excel(url2)
 
 jaren=pd.read_excel(jaren)
 jaren=jaren.rename(columns={'CodeJ':'Code'})
