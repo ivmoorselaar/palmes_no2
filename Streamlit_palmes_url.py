@@ -9,25 +9,21 @@ st.title('GGD Palmes metingen - Dashboard (test fase)')
 url='https://raw.githubusercontent.com/ivmoorselaar/palmes_no2/main/NO2_JAREN.csv'
 url2='https://github.com/ivmoorselaar/palmes_no2/blob/main/NO2_LOCATIES.xlsx?raw=true'
 
-
 jaren=pd.read_csv(url,sep=';')
 locaties=pd.read_excel(url2)
 
-jaren=pd.read_excel(jaren)
+#Datasets bewerken
 jaren=jaren.rename(columns={'CodeJ':'Code'})
 
-locaties=pd.read_excel(locaties)
 loc=locaties[['Code', 'Gemeente', 'Type_meetpunt']]
+loc.columns = loc.columns.str.strip()
 
 no2=pd.merge(jaren, loc, how='left', on='Code')
 no2=no2.rename(columns={'_2020':2020,'_2019':2019,'_2018':2018,'_2017':2017,'_2016':2016,'_2015':2015,'_2014':2014,'_2013':2013,
                              '_2012':2012, '_2011':2011,'_2010':2010})
 
-
-st.header('Selecteer links een of meerdere gemeentes')
-
-
 #Selecteer op gemeente (meerdere gemeente tegelijk)
+st.sidebar.title('Selecteer een of meerdere gemeentes')
 subset_data = no2
 
 gemeente_input = st.sidebar.multiselect(
@@ -37,67 +33,50 @@ no2.groupby('Gemeente').count().reset_index()['Gemeente'].tolist())
 if len(gemeente_input) > 0:
     subset_data = no2[no2['Gemeente'].isin(gemeente_input)]
 
-#tabel=subset_data.groupby('Gemeente').mean()
-
-if len(gemeente_input) > 0:
-	st.header('Gemiddelde per Gemeente per jaar')
-
-	"""
-	Huidige jaar is het lopende gemiddelde. 
-	Dat is het gemiddelde van de verwerkte metingen in het huidige jaar.
-	"""
-
+#Tabel
+st.header('Tabel: Gemiddelde NO2 concentratie in geselecteerde gemeente(s)')
+if st.checkbox('Tabel Gemeente'):
 	tabel=subset_data.groupby(['Gemeente','Type_meetpunt']).mean().reset_index()
-#st.table(tabel) --> Niet afgeronde getallen
 	st.table(tabel.style.set_precision(1))
-#st.dataframe(tabel.style.set_precision(1)) --> minder mooie opmaak
-#Deze werkt niet met gemeentenaam en meetpunt in tabel
-#st.table(tabel.style.format("{:.1%}"))
+	
 
-if len(gemeente_input) > 0:
-	st.header('Gemiddelde NO2 concentratie in geselecteerde gemeente(s) per type meetpunt')
+#Bar Graph
+st.header('Gemiddelde NO2 concentratie in geselecteerde gemeente(s) per type meetpunt')
+if st.checkbox('Grafiek (bar) Gemeente'):
+	if len(gemeente_input) > 0:
+		
+		bars=(alt.
+		  Chart(subset_data).
+		  mark_bar().
+		  encode(x='Gemeente',
+		  y='mean(2020):Q',
+		  color='Type_meetpunt:N',
+		  column='Type_meetpunt:N').
+		  properties(height=150, width=50))
 
-	bars=(alt.
-	  Chart(subset_data).
-	  mark_bar().
-	  encode(x='Gemeente',
-	  y='mean(2020):Q',
-	  color='Type_meetpunt:N',
-	  column='Type_meetpunt:N').
-	  properties(height=150, width=50))
+		st.altair_chart(bars)
 
-	st.altair_chart(bars)
-
-
-#Gemiddelde per gemeente
-st.header('Ontwikkeling NO2 concentratie door de tijd per Gemeente')
 #Line graph
+st.header('Ontwikkeling NO2 concentratie door de tijd per Gemeente')
 
 #Selectie gemeente
 if st.checkbox('Grafiek trend NO2'):
-	gem = st.selectbox(
-	    'Welke gemeente?',
-	     no2.groupby('Gemeente').count().reset_index()['Gemeente'])
+	if len(gemeente_input) > 0:
+	    
+		#Omvormen data
+		df=subset_data.groupby(['Gemeente','Type_meetpunt']).mean().reset_index()
+		df=df.melt(id_vars=['Gemeente','Type_meetpunt'])
+		df=df.rename(columns={'variable':'Jaar', 'value':'NO2 jaargem'})
+		df['Jaar'] = pd.to_datetime(df['Jaar'], format='%Y')
 
-	if len(gem) > 0:
-	    subset_data2 = no2[no2['Gemeente'].isin([gem])]
+		#Trend
+		multiline=alt.Chart(df).mark_line(point=True).encode(
+		    x='Jaar',
+		    y='NO2 jaargem',
+		    color='Type_meetpunt',
+		    strokeDash='Type_meetpunt')
 
-	#Bereken gemiddelde per type meetpunt
-	df=subset_data2.groupby(['Gemeente','Type_meetpunt']).mean().reset_index()
-	#Omvormen data
-	df=df.melt(id_vars=['Gemeente','Type_meetpunt'])
-	df=df.rename(columns={'variable':'Jaar', 'value':'NO2 jaargem'})
-	df['Jaar'] = pd.to_datetime(df['Jaar'], format='%Y')
-
-	#Trend
-	multiline=alt.Chart(df).mark_line(point=True).encode(
-	    x='Jaar',
-	    y='NO2 jaargem',
-	    color='Type_meetpunt',
-	    strokeDash='Type_meetpunt')
-
-	st.altair_chart(multiline)
-
+		st.altair_chart(multiline)
 
 
 st.header('Correlatie 2020 vs 2019')
